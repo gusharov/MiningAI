@@ -12,28 +12,20 @@ sct = mss.mss()
 time.sleep(2)
 # Define the region for the text
 
-text_region = {"top": 450, "left": 1700, "width": 200, "height": 100,"monitor": sct.monitors[1]}
+text_region = {"top": 450, "left": 1650, "width": 250, "height": 100,"monitor": sct.monitors[1]}
 screenshot = np.array(sct.grab(text_region))
 # Capture the screen region
 screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGB)
 # Convert to grayscale for OCR
 result = ocr.ocr(screenshot, cls=True)
 print (result)
-words = []
-sigma = 0
-
-for line in result:
-    if line != None:
-        for box in line:
-            text, confidence = box[1]
-            words.append(text)
-print(words)
-for word in words:
-    if "Mithril" in word:
-        sigma = re.sub(r"\D", "", word)
-        break
-if sigma == '':
-    sigma = 0
-int(sigma)
-print(sigma)
-
+mithrilcheck = ""
+if result[0] == None:
+    print("It is none :(")
+else:
+    for i in range(len(result[0])):
+        if "Mithril" in result[0][i][1][0]:
+            mithrilcheck = re.sub(r"\D", "", result[0][i][1][0])
+            break
+mithrilcount = int(mithrilcheck)
+print(mithrilcount)

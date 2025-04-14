@@ -15,7 +15,7 @@ class minecraftenv(gym.Env):
         #initializes all necessary variables, kinda like an object which is cool
         self.ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
         self.sct = mss.mss()
-        self.text_region = {"top": 450, "left": 1700, "width": 200, "height": 100,"monitor": self.sct.monitors[1]}
+        self.text_region = {"top": 450, "left": 1650, "width": 250, "height": 100,"monitor": self.sct.monitors[1]}
         self.screen_region = {"top": 300, "left": 500, "width": 800, "height": 500, "monitor" : self.sct.monitors[1]}
         self.current = win32api.GetCursorPos()
         self.action_space = gym.spaces.Box(low=-10, high=10, shape=(2,), dtype=np.float32)
@@ -31,26 +31,22 @@ class minecraftenv(gym.Env):
         screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGB)
         # Convert to rgb for OCR
         result = self.ocr(screenshot, cls=True)
-        mithrilcheck = 0
-        print(result)
-        words = []
-        for line in result:
-            if line != None:
-                for box in line:
-                    if isinstance(box[1], tuple) and len(box[1]) == 2:
-                        text, confidence = box[1]
-                        words.append(text)
-        for word in words:
-            if "Mithril" in word:
-                mithrilcheck = re.sub(r"\D", "", word)
-                break
-        if mithrilcheck == '':
-            mithrilcheck = 0
-        mithrilcheck = int(mithrilcheck)
-        if mithrilcheck != 0:
-            self.curmithril = mithrilcheck
-            if self.pastmithril == 0:
-                self.pastmithril = mithrilcheck
+        print(result)                 
+        mithrilcheck = ""
+        if result[0] == None:
+            print("It is none :(")
+        else:
+            for i in range(len(result[1])):
+                if "Mithril" in result[1][i][0]:
+                    mithrilcheck = re.sub(r"\D", "", result[1][i][0])
+                    break
+        if mithrilcheck != "":
+            self.curmithril = int(mithrilcheck)
+        if self.pastmithril == 0:
+            self.pastmithril = self.curmithril
+        print("current mithril powder:", self.curmithril)
+     
+        
         return frame
     def reset(self, seed = None, options = None):
         """
@@ -65,9 +61,9 @@ class minecraftenv(gym.Env):
     
     def step(self,action):
 
-        delta_x, delta_y = int(action[0]), int(action[1])
-        keyboard.press('space')
-        win32api.mouse_event(win32con.MOUSEEVENTF_MOVE,delta_x,delta_y,0,0)
+        #delta_x, delta_y = int(action[0]), int(action[1])
+        #keyboard.press('space')
+        #win32api.mouse_event(win32con.MOUSEEVENTF_MOVE,delta_x,delta_y,0,0)
         obs = self._get_observation()
         reward = 0
         if self.curmithril > self.pastmithril:
