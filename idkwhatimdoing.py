@@ -4,11 +4,13 @@ import keyboard
 import win32api, win32con
 import numpy as np
 from stable_baselines3 import PPO
+from stable_baselines3.common.env_util import DummyVecEnv
 from stable_baselines3.common.callbacks import BaseCallback
 import cv2
 import gymnasium as gym
 from paddleocr import PaddleOCR
 import re
+import os
     
 class minecraftenv(gym.Env):
     def __init__(self):
@@ -16,15 +18,15 @@ class minecraftenv(gym.Env):
         self.ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
         self.sct = mss.mss()
         self.text_region = {"top": 450, "left": 1650, "width": 250, "height": 100,"monitor": self.sct.monitors[1]}
-        self.screen_region = {"top": 300, "left": 500, "width": 800, "height": 500, "monitor" : self.sct.monitors[1]}
-        
-        self.action_space = gym.spaces.Box(low=-10, high=10, shape=(2,), dtype=np.float32)
+        self.screen_region = {"top": 174, "left": 594, "width": 732, "height": 732, "monitor" : self.sct.monitors[1]}
+        self.action_space = gym.spaces.Box(low=-100, high=100, shape=(2,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(224, 224, 3), dtype=np.uint8)
         self.current_step = 0
         self.max_step = 5
         self.curmithril = 0
         self.pastmithril = 0
     def _get_observation(self):
+        #unsure if its needed to convert MSS's screen capture to RGB, looks good to me
         screenshot = np.array(self.sct.grab(self.screen_region))
         frame = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)  # Convert from BGRA to BGR
         frame = cv2.resize(frame, (224, 224))  # Resize for simplicity
@@ -85,7 +87,7 @@ class StopTrainingCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         self.n_calls += 1
-        print(f"[Callback] Step call #{self.n_calls}")
+        print(f"[Callback] Step call #{self.n_calls/2}")
         if keyboard.is_pressed('h'):
             print("Hotkey Cancelled")
             return False
@@ -96,12 +98,12 @@ class StopTrainingCallback(BaseCallback):
 
 def main():
     
-    
-    time.sleep(2)
-
-    model = PPO("CnnPolicy", minecraftenv(), verbose=1)
-    
-    #model = PPO.load("mithrilminingPPO")
+    env = DummyVecEnv([minecraftenv])  
+    if os.path.exists("mithrilminingPPO.zip"):
+        model = PPO.load("mithrilminingPPO.zip")
+        model.set_env(env)
+    else:
+        model = PPO("CnnPolicy", env, verbose=1)
     callback = StopTrainingCallback(max_calls=200)
     print("training started!")
     model.learn(10, callback=callback) 
