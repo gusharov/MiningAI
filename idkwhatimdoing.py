@@ -4,7 +4,7 @@ import keyboard
 import win32api, win32con
 import numpy as np
 from stable_baselines3 import PPO
-from stable_baselines3.common.env_util import DummyVecEnv
+from stable_baselines3.common.callbacks import BaseCallback
 import cv2
 import gymnasium as gym
 from paddleocr import PaddleOCR
@@ -17,9 +17,11 @@ class minecraftenv(gym.Env):
         self.sct = mss.mss()
         self.text_region = {"top": 450, "left": 1650, "width": 250, "height": 100,"monitor": self.sct.monitors[1]}
         self.screen_region = {"top": 300, "left": 500, "width": 800, "height": 500, "monitor" : self.sct.monitors[1]}
-        self.current = win32api.GetCursorPos()
+        
         self.action_space = gym.spaces.Box(low=-10, high=10, shape=(2,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(224, 224, 3), dtype=np.uint8)
+        self.current_step = 0
+        self.max_step = 5
         self.curmithril = 0
         self.pastmithril = 0
     def _get_observation(self):
@@ -31,9 +33,10 @@ class minecraftenv(gym.Env):
         screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2RGB)
         # Convert to rgb for OCR
         result = self.ocr(screenshot, cls=True)
-        print(result)                 
+        #print(result)                 
         mithrilcheck = ""
         if result[0] == None:
+
             print("It is none :(")
         else:
             for i in range(len(result[1])):
@@ -44,7 +47,7 @@ class minecraftenv(gym.Env):
             self.curmithril = int(mithrilcheck)
         if self.pastmithril == 0:
             self.pastmithril = self.curmithril
-        print("current mithril powder:", self.curmithril)
+        #print("current mithril powder:", self.curmithril)
      
         
         return frame
@@ -52,9 +55,7 @@ class minecraftenv(gym.Env):
         """
         Reset the environment to the initial state.
         """
-        super().reset(seed=seed)  # Call the parent class's reset method, if needed
         self.current_step = 0  # Reset step counter
-        self.current_position = win32api.GetCursorPos()  # Reset mouse position
         observation = self._get_observation()
         info = {}  # Return an empty dictionary for additional metadata
         return observation, info
@@ -71,17 +72,40 @@ class minecraftenv(gym.Env):
         #if delta_x + delta_y > 20:
         #   reward += 2
         self.current_step += 1
+        print("current step" , self.current_step)
         
-        return obs, reward, False, False, {}
+        done = self.current_step >= self.max_step
+            
+        return obs, reward, done, False, {}
+class StopTrainingCallback(BaseCallback):
+    def __init__(self, max_calls=5, verbose=1):
+        super().__init__(verbose)
+        self.max_calls = max_calls
+        self.n_calls = 0
+
+    def _on_step(self) -> bool:
+        self.n_calls += 1
+        print(f"[Callback] Step call #{self.n_calls}")
+        if keyboard.is_pressed('h'):
+            print("Hotkey Cancelled")
+            return False
+        if self.n_calls >= self.max_calls:
+            print("[Callback] Reached max_calls, stopping training early.")
+            return False  # Returning False stops training
+        return True
+
 def main():
     
     
     time.sleep(2)
-    env = DummyVecEnv([minecraftenv])
-    model = PPO("CnnPolicy", env, verbose=1)
+
+    model = PPO("CnnPolicy", minecraftenv(), verbose=1)
+    
+    #model = PPO.load("mithrilminingPPO")
+    callback = StopTrainingCallback(max_calls=200)
     print("training started!")
-    model.learn(1000) 
+    model.learn(10, callback=callback) 
     print("Training finished. Saving the model...")
-    model.save()
+    model.save("mithrilminingPPO")
     print(f"Model saved")
 main()
