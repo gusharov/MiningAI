@@ -11,7 +11,8 @@ import gymnasium as gym
 from paddleocr import PaddleOCR
 import re
 import os
-    
+import math
+import random
 class minecraftenv(gym.Env):
     def __init__(self):
         #initializes all necessary variables, kinda like an object which is cool
@@ -25,6 +26,7 @@ class minecraftenv(gym.Env):
         self.max_step = 5
         self.curmithril = 0
         self.pastmithril = 0
+        keyboard.press('space')
     def _get_observation(self):
         #unsure if its needed to convert MSS's screen capture to RGB, looks good to me
         screenshot = np.array(self.sct.grab(self.screen_region))
@@ -49,8 +51,8 @@ class minecraftenv(gym.Env):
             self.curmithril = int(mithrilcheck)
         if self.pastmithril == 0:
             self.pastmithril = self.curmithril
-        #print("current mithril powder:", self.curmithril)
-     
+        print("current mithril powder:", self.curmithril)
+
         
         return frame
     def reset(self, seed = None, options = None):
@@ -61,18 +63,47 @@ class minecraftenv(gym.Env):
         observation = self._get_observation()
         info = {}  # Return an empty dictionary for additional metadata
         return observation, info
-    
-    def step(self,action):
+    def smooth_mouse_move(self,delta_x, delta_y, steps=30):
+        
+        # Pre-compute the easing progress for each step (using the sinusoidal easing function)
+        progress_values = [(1 - math.cos(i / steps * math.pi)) ** 2 for i in range(steps)]
 
-        #delta_x, delta_y = int(action[0]), int(action[1])
-        #keyboard.press('space')
-        #win32api.mouse_event(win32con.MOUSEEVENTF_MOVE,delta_x,delta_y,0,0)
+        # Initialize previous positions
+        prev_x, prev_y = 0, 0
+
+        # Pre-compute random delays for efficiency
+        delays = [random.uniform(0.005, 0.01) for _ in range(steps)]
+
+        # Perform the mouse movement
+        for step in range(steps):
+            # Get the current progress
+            progress = progress_values[step]
+
+            # Calculate the current target position based on progress
+            current_x = round(progress * delta_x)
+            current_y = round(progress * delta_y)
+
+            # Calculate the incremental movement for this step
+            move_x = current_x - prev_x
+            move_y = current_y - prev_y
+            prev_x, prev_y = current_x, current_y
+
+            # Move the mouse by the calculated delta
+            win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, move_x, move_y, 0, 0)
+
+            # Add a short delay between steps
+            time.sleep(delays[step])
+    def step(self,action):
+        print("action", action)
+        self.smooth_mouse_move(int(action[0]), int(action[1]), steps=30)
         obs = self._get_observation()
         reward = 0
+        movement_magnitude = abs(action[0]) + abs(action[1])
+        reward += 0.1 * movement_magnitude  # Scale this factor as needed
         if self.curmithril > self.pastmithril:
-            reward += 10
-        #if delta_x + delta_y > 20:
-        #   reward += 2
+            self.pastmithril = self.curmithril
+            reward += 1
+
         self.current_step += 1
         print("current step" , self.current_step)
         
@@ -103,7 +134,7 @@ def main():
         model = PPO.load("mithrilminingPPO.zip")
         model.set_env(env)
     else:
-        model = PPO("CnnPolicy", env, verbose=1)
+        model = PPO("CnnPolicy", env, verbose=1, ent_coef=0.2,)
     callback = StopTrainingCallback(max_calls=200)
     print("training started!")
     model.learn(10, callback=callback) 
