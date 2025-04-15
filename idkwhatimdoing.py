@@ -22,13 +22,12 @@ class minecraftenv(gym.Env):
         self.sct = mss.mss()
         self.text_region = {"top": 450, "left": 1650, "width": 250, "height": 100,"monitor": self.sct.monitors[1]}
         self.screen_region = {"top": 174, "left": 594, "width": 732, "height": 732, "monitor" : self.sct.monitors[1]}
-        self.action_space = gym.spaces.Box(low=-100, high=100, shape=(2,), dtype=np.float32)
+        self.action_space = gym.spaces.Box(low=-100, high=100, shape=(2,), dtype=np.int32)
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(224, 224, 3), dtype=np.uint8)
         self.current_step = 0
-        self.max_step = 10000000000
+        self.max_step = 10
         self.curmithril = 0
         self.pastmithril = 0
-        self.writer = SummaryWriter("./logs/run_3")
         keyboard.press('space')
         
     def _get_observation(self):
@@ -99,7 +98,7 @@ class minecraftenv(gym.Env):
             time.sleep(delays[step])
     def step(self,action):
         print("action", action)
-        self.smooth_mouse_move(int(action[0]), int(action[1]), steps=30)
+        self.smooth_mouse_move(round(action[0]), round(action[1]), steps=30)
         obs = self._get_observation()
         reward = 0
         movement_magnitude = abs(action[0]) + abs(action[1])
@@ -111,13 +110,10 @@ class minecraftenv(gym.Env):
         self.current_step += 1
         print("current step" , self.current_step)
         done = self.current_step >= self.max_step
-        self.writer.add_scalar("reward/step", reward, self.current_step)
         return obs, reward, done, False, {}
 class StopTrainingCallback(BaseCallback):
-    def __init__(self, max_calls=5, verbose=1):
+    def __init__(self, verbose=1):
         super().__init__(verbose)
-        self.max_calls = max_calls
-        self.n_calls = 0
 
     def _on_step(self) -> bool:
         self.n_calls += 1
@@ -128,9 +124,6 @@ class StopTrainingCallback(BaseCallback):
         if keyboard.is_pressed('h'):
             print("Hotkey Cancelled")
             return False
-        if self.n_calls >= self.max_calls:
-            print("[Callback] Reached max_calls, stopping training early.")
-            return False  # Returning False stops training
         return True
 
 def main():
@@ -140,10 +133,10 @@ def main():
         model = PPO.load("mithrilminingPPO.zip", env = env)
 
     else:
-        model = PPO("CnnPolicy", env, verbose=2, ent_coef=0.2)
-    callback = StopTrainingCallback(max_calls=1000000)
+        model = PPO("CnnPolicy", env, verbose=2, ent_coef=0.5, n_steps=10, batch_size=10, learning_rate=0.001, tensorboard_log="./logs/")
+    callback = StopTrainingCallback()
     print("training started!")
-    model.learn(1000000, tb_log_name="run_2",callback=callback, log_interval=1) 
+    model.learn(total_timesteps= 100, tb_log_name="run_5",callback=callback, log_interval=1) 
     print("Training finished. Saving the model...")
     model.save("mithrilminingPPO")
     print(f"Model saved")

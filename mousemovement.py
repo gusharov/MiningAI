@@ -48,7 +48,8 @@ def main():
 
     # Example: Move the mouse by 200 pixels right and 100 pixels down
     smooth_mouse_move(100, 100, steps=30)  # Reduced steps for faster movement
-
+    time.sleep(2)
+    win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, 100, 100, 0, 0)
     print("Mouse movement completed.")
 
 if __name__ == "__main__":
