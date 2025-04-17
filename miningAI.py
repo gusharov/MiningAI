@@ -22,14 +22,14 @@ class minecraftenv(gym.Env):
         self.sct = mss.mss()
         #self.text_region = {"top": 450, "left": 1650, "width": 250, "height": 100,"monitor": self.sct.monitors[1]}
         self.screen_region = {"top": 296, "left": 716, "width": 488, "height": 488, "monitor" : self.sct.monitors[1]}
-        self.action_space = gym.spaces.MultiDiscrete([20, 20])
+        self.action_space = gym.spaces.MultiDiscrete([20, 10])
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(224, 224, 3), dtype=np.uint8)
         self.current_step = 0
         self.max_step = 10
         #self.curmithril = 0
         #self.pastmithril = 0
         self.writer = SummaryWriter("./logs/run_7")
-        self.vertical = 0
+        
         keyboard.press('space')
         
     def _get_observation(self):
@@ -37,7 +37,6 @@ class minecraftenv(gym.Env):
         screenshot = np.array(self.sct.grab(self.screen_region))
         frame = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)  # Convert from BGRA to BGR
         frame = cv2.resize(frame, (224, 224))  # Resize for simplicity
-        
         return frame
     def reset(self, seed = None, options = None):
         """
@@ -90,19 +89,11 @@ class minecraftenv(gym.Env):
         return color
     def step(self,action):
         reward = 0
-        self.smooth_mouse_move(round(action[0])*10, round(action[1])*10, steps=30)
+        mouse_x, mouse_y = action[0], action[1]
+        self.smooth_mouse_move(round((mouse_x)-10)*10, round((mouse_y)-5)*5, steps=30)
         # Clamp vertical tilt to [-50, 50]
-        self.vertical += action[1]*10  # Adjust the tilt based on action
-        if self.vertical > 50:
-            self.vertical = 50
-        elif self.vertical < -50:
-            self.vertical = -50
-
-        # Apply penalties for extreme tilt ranges
-        if self.vertical > 30:
-            reward -= 0.5
-        elif self.vertical < -30:
-            reward -= 0.5
+        
+       
         colr = self.get_pixel_color(244, 244)
         mithril = colr[0]
         titanium = colr[1]
@@ -113,11 +104,11 @@ class minecraftenv(gym.Env):
         if mithril > 100 and titanium + bedrock == 0:
             print("looking at mithril")
             mith = True
-            reward += 1
+            reward += 1.5
         elif titanium > 100 and mithril + bedrock == 0:
             tita = True
             print("looking at titanium")
-            reward += 1
+            reward += 2
         else:
             print("looking at something else")
             reward -= 1
@@ -125,7 +116,7 @@ class minecraftenv(gym.Env):
         time.sleep(0.5)
         if mithril > 100 and titanium + bedrock == 0:
             print("looking at mithril")
-            reward -= 2.5
+            reward -= 1.5
         elif titanium > 100 and mithril + bedrock == 0:
             print("looking at titanium")
             if mith == True:
@@ -153,16 +144,12 @@ class StopTrainingCallback(BaseCallback):
     def __init__(self, verbose=1):
         super().__init__(verbose)
     def _on_step(self) -> bool:
-        infos = self.locals["infos"]
         print(f"[Callback] Step call #{self.n_calls}")
         if keyboard.is_pressed('h'):
             print("Hotkey Cancelled")
             return False
-        for info in infos:
-            if "current_mithril" in info:
-                self.logger.record("environment/current_mithril", info["current_mithril"])
-            if "reward" in info:
-                self.logger.record("environment/reward", info["reward"])
+        
+            
         return True
 
 def main():
@@ -172,10 +159,10 @@ def main():
         model = PPO.load("mithrilminingPPO.zip", env = env)
 
     else:
-        model = PPO("CnnPolicy", env, verbose=2, ent_coef=0.1, n_steps=128, batch_size=16, learning_rate=0.0001, tensorboard_log="./logs/")
+        model = PPO("CnnPolicy", env, verbose=2, ent_coef=0.15, n_steps=256, batch_size=128, learning_rate=0.0001, tensorboard_log="./logs/")
     callback = StopTrainingCallback()
     print("training started!")
-    model.learn(total_timesteps= 2500, tb_log_name="run_17",callback=callback, log_interval=1) 
+    model.learn(total_timesteps= 2560, tb_log_name="run_23",callback=callback, log_interval=1) 
     print("Training finished. Saving the model...")
     model.save("mithrilminingPPO")
     print(f"Model saved")
