@@ -1,0 +1,9 @@
+for the reward system, check if the pixel after movement is blue or the color of titanium/outer mithril, reward. Otherwise, punish and bring -reward. If color before movement is blue/titanium/color of mithril punish
+, if its color of bedrock, reward!!
+
+only give reward if color before was bedrock and color after movement is mithril, otherwise punish
+
+
+make a texture pack where titanium and mithril are all one color so it is very easy to mine.
+
+make titanium a different texture to check if mined mithril turns into titanium or bedrock, then figure out a way to remove mining texture -> shouldnt be necessary if block is broken after finishing

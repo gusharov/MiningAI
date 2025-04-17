@@ -4,43 +4,46 @@ import win32api
 import win32con
 import math
 
-def smooth_mouse_move(delta_x, delta_y, steps=30):
-    """
-    Moves the mouse smoothly like a human by starting slow, peaking at the middle,
-    and stopping more abruptly at the end.
+import time
+import random
+import win32api
+import win32con
+import math
 
-    :param delta_x: Total x-axis movement (in pixels).
-    :param delta_y: Total y-axis movement (in pixels).
-    :param steps: Number of steps to break the movement into (fewer steps = faster movement).
-    """
-    # Pre-compute the easing progress for each step (using the sinusoidal easing function)
-    progress_values = [(1 - math.cos(i / steps * math.pi)) ** 2 for i in range(steps)]
-
-    # Initialize previous positions
+def smooth_mouse_move(delta_x, delta_y, steps=40):
     prev_x, prev_y = 0, 0
 
-    # Pre-compute random delays for efficiency
-    delays = [random.uniform(0.005, 0.01) for _ in range(steps)]
+    # Smooth S-curve easing for human-like speed change
+    progress_values = [(1 - math.cos(i / (steps - 1) * math.pi)) / 2 for i in range(steps)]
 
-    # Perform the mouse movement
-    for step in range(steps):
-        # Get the current progress
-        progress = progress_values[step]
+    for i in range(steps):
+        progress = progress_values[i]
 
-        # Calculate the current target position based on progress
-        current_x = round(progress * delta_x)
-        current_y = round(progress * delta_y)
+        # Target coordinates based on progress
+        target_x = round(progress * delta_x)
+        target_y = round(progress * delta_y)
 
-        # Calculate the incremental movement for this step
-        move_x = current_x - prev_x
-        move_y = current_y - prev_y
-        prev_x, prev_y = current_x, current_y
+        # Add slight curve/wobble (simulating hand movement imprecision)
+        wobble_x = random.uniform(-0.5, 0.5) * (1 - abs(0.5 - progress) * 2)  # Max in middle of path
+        wobble_y = random.uniform(-0.5, 0.5) * (1 - abs(0.5 - progress) * 2)
 
-        # Move the mouse by the calculated delta
+        target_x += int(wobble_x)
+        target_y += int(wobble_y)
+
+        # Calculate delta from previous
+        move_x = target_x - prev_x
+        move_y = target_y - prev_y
+        prev_x, prev_y = target_x, target_y
+
+        # Actually move the mouse
         win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, move_x, move_y, 0, 0)
 
-        # Add a short delay between steps
-        time.sleep(delays[step])
+        # Randomized delay to mimic inconsistent hand speed
+        time.sleep(random.uniform(0.005, 0.012))
+
+    # Final correction step (in case rounding undershot)
+    win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, delta_x - prev_x, delta_y - prev_y, 0, 0)
+
 
 def main():
     print("Starting faster human-like mouse movement with abrupt stop simulation...")
