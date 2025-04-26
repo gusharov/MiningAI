@@ -1,0 +1,3 @@
+new reward system .txt
+
+train the ai to look down and up first, reset by randomly looking down or up and then if the ai goes down when looking up, reward, if it goes up when looking down reward, do this for at least a while so the ai knows what to do and doesn't get stuck anymore, start fresh with a new ai

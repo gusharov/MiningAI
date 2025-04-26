@@ -14,7 +14,7 @@ import os
 import math
 import random
 from torch.utils.tensorboard import SummaryWriter
-class minecraftenv(gym.Env):
+class trainavoidbed(gym.Env):
     
     def __init__(self):
         #initializes all necessary variables, kinda like an object which is cool
@@ -29,6 +29,7 @@ class minecraftenv(gym.Env):
         #self.curmithril = 0
         #self.pastmithril = 0
         self.writer = SummaryWriter("./logs/run_7")
+        self.heightcheck = 0
         
         keyboard.press('space')
         
@@ -90,6 +91,16 @@ class minecraftenv(gym.Env):
     def step(self,action):
         reward = 0
         mouse_x, mouse_y = action[0], action[1]
+        if mouse_y > 5:
+            self.heightcheck += 1
+        elif mouse_y < 5:
+            self.heightcheck -= 1
+        if self.heightcheck > 3:
+            reward -= 1
+            heightcheck = 0
+        elif self.heightcheck < -3:
+            reward -= 1
+            heightcheck = 0
         self.smooth_mouse_move(round((mouse_x)-10)*10, round((mouse_y)-5)*5, steps=30)
         # Clamp vertical tilt to [-50, 50]
         
@@ -101,33 +112,33 @@ class minecraftenv(gym.Env):
         mith = False
         tita = False
         print("just moved")
-        if mithril > 100 and titanium + bedrock == 0:
+        if mithril > 50 and titanium + bedrock == 0:
             print("looking at mithril")
             mith = True
-            reward += 1.5
-        elif titanium > 100 and mithril + bedrock == 0:
+            reward += 2
+        elif titanium > 50 and mithril + bedrock == 0:
             tita = True
             print("looking at titanium")
-            reward += 2
+            reward += 3
         else:
             print("looking at something else")
-            reward -= 1
+            reward -= 10
         print("waiting for break")
-        time.sleep(0.5)
-        if mithril > 100 and titanium + bedrock == 0:
+        time.sleep(0.7)
+        if mithril > 50 and titanium + bedrock == 0:
             print("looking at mithril")
             reward -= 1.5
-        elif titanium > 100 and mithril + bedrock == 0:
+        elif titanium > 50 and mithril + bedrock == 0:
             print("looking at titanium")
             if mith == True:
                 reward += 1.5
-        elif bedrock > 100 and mithril + titanium == 0:
+        elif bedrock > 50 and mithril + titanium == 0:
             if tita == True or tita == True:
                 print("looking at bedrock")
                 reward += 1.5
         else:
             print("looking at something else")
-            reward -= 3
+            reward -= 5
         colr = self.get_pixel_color(244, 244)
         if(titanium > 100 and mithril + bedrock == 0) or (bedrock > 100 and mithril + titanium == 0):
             print("looking at titanium or bedrock")
@@ -144,7 +155,10 @@ class StopTrainingCallback(BaseCallback):
     def __init__(self, verbose=1):
         super().__init__(verbose)
     def _on_step(self) -> bool:
+        reward = self.locals["rewards"]
         print(f"[Callback] Step call #{self.n_calls}")
+        self.logger.record("train/reward", reward.mean())
+        self.logger.record("train/step", self.num_timesteps)
         if keyboard.is_pressed('h'):
             print("Hotkey Cancelled")
             return False
@@ -154,7 +168,7 @@ class StopTrainingCallback(BaseCallback):
 
 def main():
     
-    env = DummyVecEnv([minecraftenv])  
+    env = DummyVecEnv([trainavoidbed])  
     if os.path.exists("mithrilminingPPO.zip"):
         model = PPO.load("mithrilminingPPO.zip", env = env)
 
@@ -162,7 +176,7 @@ def main():
         model = PPO("CnnPolicy", env, verbose=2, ent_coef=0.15, n_steps=256, batch_size=128, learning_rate=0.0001, tensorboard_log="./logs/")
     callback = StopTrainingCallback()
     print("training started!")
-    model.learn(total_timesteps= 2560, tb_log_name="run_23",callback=callback, log_interval=1) 
+    model.learn(total_timesteps= 2560, tb_log_name="run_26",callback=callback, log_interval=1) 
     print("Training finished. Saving the model...")
     model.save("mithrilminingPPO")
     print(f"Model saved")
