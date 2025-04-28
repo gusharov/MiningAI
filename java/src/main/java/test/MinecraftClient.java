@@ -29,16 +29,15 @@ public class MinecraftClient {
                 System.out.println("Direct link: " + code.getDirectVerificationUri());
             })
         );
-        
+        //the above authenticates and gets an access token
         String name = javaSession.getMcProfile().getName();
         UUID uuid = javaSession.getMcProfile().getId();
         String accessToken = javaSession.getMcProfile().getMcToken().getAccessToken();
+        //gets necessary variables for "faking" a client
         System.out.println("Logged in as: " + name);
 
-        
-        // Initialize MinecraftProtocol
         MinecraftProtocol hhe = new MinecraftProtocol(new GameProfile(uuid, name), accessToken);
-        
+        //hhe.newClientSession(session); //look into this method
         // Create a ClientSession
         ClientNetworkSession clisession = ClientNetworkSessionFactory.factory()
                 .setAddress("mc.minehut.com")
