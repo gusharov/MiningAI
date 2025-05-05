@@ -1,0 +1,20 @@
+InetSocketAddress proxyInetSocketAddress = new InetSocketAddress("65.21.127.34", 1085);
+   Proxy proxy = new Proxy(Proxy.Type.HTTP, proxyInetSocketAddress);
+
+   MinecraftProtocol protocol = new MinecraftProtocol("test");
+   protocol.setUseDefaultListeners(false);
+
+   ClientListener clientProxyListener = new ClientListener(SubProtocol.LOGIN) {
+        @Override
+        public void connected(ConnectedEvent event) {
+            event.getSession().send(new HandshakePacket(MinecraftConstants.PROTOCOL_VERSION, "65.21.127.34", 1085, HandshakeIntent.LOGIN));
+        }
+   };
+
+   SessionService sessionService = new SessionService();
+   sessionService.setProxy(proxy);
+
+   Session client = new TcpClientSession(host, port, protocol, null);
+   client.setFlag(MinecraftConstants.SESSION_SERVICE_KEY, sessionService);
+
+   client.addListener(clientProxyListener);
